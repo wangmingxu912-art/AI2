@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 阅卷 (后端增强版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .markdown-body h1 { font-size: 1.5em; color: #1e3a8a; margin-top: 1em; border-bottom: 1px solid #ddd; }
+        .markdown-body h2 { font-size: 1.2em; color: #2563eb; margin-top: 1em; font-weight: bold; }
+        .markdown-body strong { color: #dc2626; background: #fee2e2; padding: 2px 4px; }
+        .markdown-body p { margin-bottom: 0.8em; line-height: 1.6; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-10 max-w-4xl">
+        <div class="bg-white rounded-xl shadow-xl p-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">🚀 AI 全自动阅卷系统</h1>
+            
+            <div class="flex gap-4 mb-6">
+                <select id="subject" class="p-3 border rounded-lg bg-gray-50 flex-1">
+                    <option value="物理">⚛️ 物理</option>
+                    <option value="化学">🧪 化学</option>
+                    <option value="数学">📐 数学</option>
+                </select>
+                <input type="file" id="pdfFile" accept=".pdf" class="p-2 border rounded-lg flex-1">
+            </div>
+
+            <button onclick="uploadAndAnalyze()" id="btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg transition shadow-lg flex justify-center items-center">
+                开始批改 (后端处理)
+            </button>
+
+            <!-- 状态日志 -->
+            <div id="status" class="mt-4 text-center text-gray-600 hidden"></div>
+
+            <!-- 结果显示 -->
+            <div id="result" class="hidden mt-8 border-t pt-6">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800">📝 批改报告</h2>
+                <div id="content" class="markdown-body bg-gray-50 p-6 rounded-lg border"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function uploadAndAnalyze() {
+            const fileInput = document.getElementById('pdfFile');
+            const subject = document.getElementById('subject').value;
+            const btn = document.getElementById('btn');
+            const status = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            const contentDiv = document.getElementById('content');
+
+            if (!fileInput.files[0]) return alert("请上传 PDF");
+
+            // UI 状态更新
+            btn.disabled = true;
+            btn.innerHTML = `<div class="loader"></div> 正在上传并处理...`;
+            status.classList.remove('hidden');
+            status.innerText = "正在后端进行 PDF 拆分和逐页识别 (这可能需要 30-60 秒)...";
+            resultDiv.classList.add('hidden');
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('subject', subject);
+
+            try {
+                // 请求本地 Python 后端
+                const response = await fetch('http://localhost:5000/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error("后端处理失败");
+
+                const data = await response.json();
+                
+                // 渲染结果
+                contentDiv.innerHTML = marked.parse(data.grading_result);
+                resultDiv.classList.remove('hidden');
+                status.innerText = "✅ 处理完成！";
+                btn.innerHTML = "开始批改 (后端处理)";
+
+            } catch (error) {
+                console.error(error);
+                status.innerText = "❌ 发生错误: " + error.message;
+                alert("请求失败，请确保 Python 后端已启动！");
+                btn.innerHTML = "重试";
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
