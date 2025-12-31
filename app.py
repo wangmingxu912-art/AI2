@@ -15,7 +15,8 @@ CORS(app)
 
 # 配置
 API_KEY = os.environ.get("OPENAI_API_KEY") or os.environ.get("API_KEY") or ""
-API_URL = os.environ.get("OPENAI_API_URL") or "https://api.apimart.ai/v1/responses"
+# 默认使用 OpenAI 官方 Responses API；如需走代理/第三方网关，可用 OPENAI_API_URL 覆盖
+API_URL = os.environ.get("OPENAI_API_URL") or "https://api.openai.com/v1/responses"
 # 按需求：使用 GPT-5.2 + thinking 模式
 MODEL_NAME = os.environ.get("OPENAI_MODEL") or "gpt-5.2"
 
