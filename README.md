@@ -10,6 +10,18 @@
 2) 按提示粘贴 `OPENAI_API_KEY`（不会写入仓库文件）  
 3) 浏览器打开的 `index.html` 里上传 PDF 开始批改
 
+### 打包成 mac 可执行文件（不依赖你本机 Python 环境来运行）
+> 说明：我在 Linux 云环境里无法直接产出 mac 二进制，但你在 mac 上运行打包脚本即可生成 `dist/AIGrader`。
+
+1) 先在 mac 上打包：
+- 运行 `build_mac_pyinstaller.command`
+
+2) 运行打包后的可执行文件：
+- 运行 `run_mac_dist.command`
+
+### 不想折腾 Python：用 Docker（mac 上只要装 Docker Desktop）
+- 运行 `run_mac_docker.command`
+
 ### 环境变量
 - **OPENAI_API_KEY**：OpenAI API Key（必填）
 - **OPENAI_API_URL**：可选，默认 `https://api.openai.com/v1/responses`

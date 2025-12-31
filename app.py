@@ -2,6 +2,7 @@ import os
 import base64
 import io
 import json
+import sys
 import requests
 import concurrent.futures
 from flask import Flask, request, jsonify, send_from_directory
@@ -10,7 +11,17 @@ from PIL import Image
 from PIL import ImageDraw, ImageFont
 import fitz # PyMuPDF
 
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+def _get_app_dir() -> str:
+    """
+    兼容 PyInstaller 打包后的资源目录：
+    - 开发态：使用当前文件目录
+    - frozen：优先使用 sys._MEIPASS（解包资源目录）
+    """
+    if getattr(sys, "frozen", False):
+        return getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+APP_DIR = _get_app_dir()
 app = Flask(__name__)
 # 仍保留 CORS（例如你未来把前端放别的域名）
 CORS(app)
@@ -367,7 +378,11 @@ def _get_page_error_annotations(page_image: Image.Image, page_num: int, subject:
 @app.route("/", methods=["GET"])
 def index():
     # 用后端托管前端，避免 file:// 跨域导致的 Failed to fetch
-    return send_from_directory(APP_DIR, "index.html")
+    try:
+        return send_from_directory(APP_DIR, "index.html")
+    except Exception:
+        # 兜底：如果资源目录没找到，则尝试当前工作目录
+        return send_from_directory(os.getcwd(), "index.html")
 
 @app.route('/analyze', methods=['POST'])
 def analyze_pdf():
