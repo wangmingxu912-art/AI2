@@ -40,6 +40,10 @@
             <div id="result" class="hidden mt-8 border-t pt-6">
                 <h2 class="text-2xl font-bold mb-4 text-gray-800">📝 批改报告</h2>
                 <div id="content" class="markdown-body bg-gray-50 p-6 rounded-lg border"></div>
+
+                <h2 class="text-2xl font-bold mt-8 mb-4 text-gray-800">🖼️ 错误标注图（提取页面）</h2>
+                <div id="score" class="mb-4 text-gray-700"></div>
+                <div id="images" class="grid grid-cols-1 gap-6"></div>
             </div>
         </div>
     </div>
@@ -52,6 +56,8 @@
             const status = document.getElementById('status');
             const resultDiv = document.getElementById('result');
             const contentDiv = document.getElementById('content');
+            const imagesDiv = document.getElementById('images');
+            const scoreDiv = document.getElementById('score');
 
             if (!fileInput.files[0]) return alert("请上传 PDF");
 
@@ -67,8 +73,8 @@
             formData.append('subject', subject);
 
             try {
-                // 请求本地 Python 后端
-                const response = await fetch('http://localhost:5000/analyze', {
+                // 同源请求（推荐通过 http://localhost:5000/ 打开页面）
+                const response = await fetch('/analyze', {
                     method: 'POST',
                     body: formData
                 });
@@ -79,6 +85,27 @@
                 
                 // 渲染结果
                 contentDiv.innerHTML = marked.parse(data.grading_result);
+                const finalScore = (data.final_score ?? 0);
+                const finalMax = (data.final_max_score ?? 0);
+                scoreDiv.innerHTML = `<div class="p-3 bg-white border rounded-lg"><b>最终分数：</b> ${finalScore} / ${finalMax}</div>`;
+
+                // 渲染标注图片
+                imagesDiv.innerHTML = "";
+                if (Array.isArray(data.annotated_images)) {
+                    for (const item of data.annotated_images) {
+                        const pageNum = item.page_num;
+                        const b64 = item.image_base64;
+                        const wrapper = document.createElement('div');
+                        wrapper.className = "bg-white border rounded-lg p-4 shadow-sm";
+                        wrapper.innerHTML = `
+                            <div class="font-bold mb-2 text-gray-800">第 ${pageNum} 页</div>
+                            <img class="w-full rounded border" src="data:image/jpeg;base64,${b64}" alt="Page ${pageNum}">
+                        `;
+                        imagesDiv.appendChild(wrapper);
+                    }
+                } else {
+                    imagesDiv.innerHTML = `<div class="text-gray-500">（后端未返回标注图片）</div>`;
+                }
                 resultDiv.classList.remove('hidden');
                 status.innerText = "✅ 处理完成！";
                 btn.innerHTML = "开始批改 (后端处理)";
