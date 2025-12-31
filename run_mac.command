@@ -31,11 +31,11 @@ if [ -z "${OPENAI_API_KEY:-}" ]; then
 fi
 
 echo "[4/4] 启动后端：http://localhost:5000"
-echo "提示：后端启动后会在浏览器打开 index.html。"
+echo "提示：请在浏览器打开 http://localhost:5000/ （同源，无跨域）。"
 
-# 尝试打开前端页面
+# 尝试打开前端页面（后端托管）
 if command -v open >/dev/null 2>&1; then
-  open "index.html" || true
+  open "http://localhost:5000/" || true
 fi
 
 exec ".venv/bin/python" "app.py"

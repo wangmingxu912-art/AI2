@@ -4,13 +4,15 @@ import io
 import json
 import requests
 import concurrent.futures
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from PIL import Image
 from PIL import ImageDraw, ImageFont
 import fitz # PyMuPDF
 
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
+# 仍保留 CORS（例如你未来把前端放别的域名）
 CORS(app)
 
 # 配置
@@ -362,6 +364,11 @@ def _get_page_error_annotations(page_image: Image.Image, page_num: int, subject:
     parsed = _safe_json_loads(text)
     return parsed
 
+@app.route("/", methods=["GET"])
+def index():
+    # 用后端托管前端，避免 file:// 跨域导致的 Failed to fetch
+    return send_from_directory(APP_DIR, "index.html")
+
 @app.route('/analyze', methods=['POST'])
 def analyze_pdf():
     if 'file' not in request.files:
@@ -511,4 +518,4 @@ def analyze_pdf():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host="127.0.0.1", port=5000)
