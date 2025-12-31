@@ -3,6 +3,8 @@ import base64
 import io
 import json
 import sys
+import threading
+import webbrowser
 import requests
 import concurrent.futures
 from flask import Flask, request, jsonify, send_from_directory
@@ -91,6 +93,72 @@ def _safe_json_loads(s: str):
         if len(lines) >= 3 and lines[0].startswith("```") and lines[-1].startswith("```"):
             text = "\n".join(lines[1:-1]).strip()
     return json.loads(text)
+
+def _prompt_api_key_gui() -> str:
+    """
+    mac 双击 .app（无终端）场景：用 Tk 弹窗让用户输入 API Key。
+    注意：仅用于运行时，不写入磁盘。
+    """
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+    except Exception as e:
+        raise RuntimeError(f"GUI prompt unavailable (tkinter missing): {e}")
+
+    key_holder = {"key": ""}
+
+    root = tk.Tk()
+    root.title("AI 阅卷 - 输入 OpenAI API Key")
+    root.geometry("520x180")
+    root.resizable(False, False)
+
+    lbl = tk.Label(root, text="请输入 OPENAI_API_KEY（不会保存到本地文件）：", anchor="w")
+    lbl.pack(padx=16, pady=(16, 8), fill="x")
+
+    entry = tk.Entry(root, show="*", width=80)
+    entry.pack(padx=16, pady=(0, 12), fill="x")
+    entry.focus_set()
+
+    hint = tk.Label(root, text="提示：你也可以用环境变量 OPENAI_API_KEY 启动应用以免每次输入。", fg="#555")
+    hint.pack(padx=16, pady=(0, 10), fill="x")
+
+    def on_ok():
+        val = entry.get().strip()
+        if not val:
+            messagebox.showerror("错误", "API Key 不能为空")
+            return
+        key_holder["key"] = val
+        root.destroy()
+
+    def on_cancel():
+        key_holder["key"] = ""
+        root.destroy()
+
+    btn_frame = tk.Frame(root)
+    btn_frame.pack(padx=16, pady=(0, 16), fill="x")
+    ok_btn = tk.Button(btn_frame, text="确定", command=on_ok, width=10)
+    ok_btn.pack(side="right", padx=(8, 0))
+    cancel_btn = tk.Button(btn_frame, text="退出", command=on_cancel, width=10)
+    cancel_btn.pack(side="right")
+
+    root.protocol("WM_DELETE_WINDOW", on_cancel)
+    root.mainloop()
+
+    return key_holder["key"]
+
+def _ensure_api_key():
+    """
+    确保 API_KEY 可用：
+    - 有环境变量就直接用
+    - 若为 frozen app（常见为 mac .app 双击）且没 key，则弹窗输入
+    """
+    global API_KEY
+    if API_KEY:
+        return
+    if getattr(sys, "frozen", False):
+        API_KEY = _prompt_api_key_gui()
+    if not API_KEY:
+        raise RuntimeError("Missing API key. Please set OPENAI_API_KEY (or API_KEY).")
 
 def encode_image(image):
     """将 PIL Image 转为 Base64"""
@@ -533,4 +601,21 @@ def analyze_pdf():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host="127.0.0.1", port=5000)
+    # mac 双击 .app：无终端也能用
+    _ensure_api_key()
+
+    host = "127.0.0.1"
+    port = int(os.environ.get("PORT", "5000"))
+    debug = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes", "y", "on")
+
+    def _open_browser():
+        try:
+            webbrowser.open(f"http://{host}:{port}/", new=1)
+        except Exception:
+            pass
+
+    # 延迟打开，避免服务未启动就访问
+    threading.Timer(1.2, _open_browser).start()
+
+    # 打包分发时默认不开 debug，且关闭 reloader 避免重复打开浏览器
+    app.run(debug=debug, use_reloader=False, host=host, port=port)

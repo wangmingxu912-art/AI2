@@ -19,6 +19,17 @@
 2) 运行打包后的可执行文件：
 - 运行 `run_mac_dist.command`
 
+### 生成可双击运行的 mac `.app`（不打开终端）
+1) 在 mac 上执行：
+- `./build_mac_app.command`
+
+2) 然后双击：
+- `dist/AIGrader.app`
+
+应用启动后会：
+- 如未设置 `OPENAI_API_KEY`，弹窗输入（不保存到磁盘）
+- 自动打开浏览器 `http://127.0.0.1:5000/`
+
 ### 不想折腾 Python：用 Docker（mac 上只要装 Docker Desktop）
 - 运行 `run_mac_docker.command`
 
